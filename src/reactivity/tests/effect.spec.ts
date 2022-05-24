@@ -6,12 +6,20 @@ describe('effect', () => {
   it('happy path', () => {
     const user = reactive({
       age: 10,
+      num: 1,
+      size: 100
     })
 
     let nextAge
+    let nextNum
+    let nextSize
     effect(() => {
       //相当于实际使用中，nextAge与user.age绑定，nextAge的值会根据user.age变化
       nextAge = user.age + 1
+      nextSize = user.size + 1
+    })
+    effect(() => {
+      nextNum = user.num + 1
     })
 
     expect(nextAge).toBe(11)
@@ -19,6 +27,8 @@ describe('effect', () => {
     //update
     user.age++
     expect(nextAge).toBe(12)
+    user.num++
+    expect(nextNum).toBe(3)
   })
 
   /**
@@ -80,9 +90,13 @@ describe('effect', () => {
     stop(runner)
     obj.prop = 3
     expect(dummy).toBe(2)
+    //相当于obj.prop = obj.prop + 1,调用了一次get，再一次set
+    //调用get会触发依赖收集，导致
+    obj.prop++  
+    expect(dummy).toBe(2)
 
     runner()
-    expect(dummy).toBe(3)
+    expect(dummy).toBe(4)
   })
 
   //在执行stop时，会调用一次onStop，类似于回调函数

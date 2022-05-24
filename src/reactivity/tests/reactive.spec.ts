@@ -1,4 +1,4 @@
-import { reactive } from '../reactive'
+import { isReactive, reactive } from '../reactive'
 
 //测试reactive
 describe('reactive', () => {
@@ -9,5 +9,8 @@ describe('reactive', () => {
     expect(observed).not.toBe(original)
     //测试响应式对象的foo值是1
     expect(observed.foo).toBe(1)
+
+    expect(isReactive(observed)).toBe(true)
+    expect(isReactive(original)).toBe(false)
   })
 })

@@ -1,4 +1,4 @@
-import { readonly } from '../reactive'
+import { isReadonly, readonly } from '../reactive'
 
 // readonly 可读
 describe('readonly', () => {
@@ -7,5 +7,19 @@ describe('readonly', () => {
     const wrapped = readonly(original)
     expect(wrapped).not.toBe(original)
     expect(wrapped.foo).toBe(1)
+
+    expect(isReadonly(wrapped)).toBe(true)
+  })
+
+  //当对可读数据进行set操作时，提示错误
+  it('warn then call set', () => {
+    //jest.fn()可以方便我们去断言
+    console.warn = jest.fn()
+
+    const user = readonly({ age: 10 })
+    user.age = 11
+
+    expect(console.warn).toBeCalled()
+
   })
 })
