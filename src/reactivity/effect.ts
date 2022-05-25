@@ -13,7 +13,7 @@ class ReactiveEffect {
    * 用于判断使用stop()时是否需要清空数据，true为需要。
    * *也是作为是否调用了stop()的标识，值为false时，则肯定是调用了stop
    */
-  public active = true 
+  public active = true
 
   constructor(fn, scheduler?: Function) {
     this._fn = fn
@@ -29,10 +29,10 @@ class ReactiveEffect {
      */
 
     //当active为false时，说明已经调用了stop()，因为shouldTrack为false，直接返回不触发依赖收集
-    if(!this.active) {
+    if (!this.active) {
       return this._fn()
     }
-    
+
     //当active为true，将shouldTrack变为true，允许依赖收集
     shouldTrack = true
     const result = this._fn()
@@ -72,8 +72,7 @@ let targetMap = new Map()
  * @param key 键名
  */
 export function track(target, key) {
-
-  if(!isTracking()) return
+  if (!isTracking()) return
 
   //通过对象地图获取key地图
   let depsMap = targetMap.get(target)
@@ -91,7 +90,11 @@ export function track(target, key) {
     depsMap.set(key, dep)
   }
 
-  if(dep.has(activeEffect)) return
+  trackEffect(dep)
+}
+
+export function trackEffect(dep) {
+  if (dep.has(activeEffect)) return
   //将ReactiveEffect实例传入dep中
   dep.add(activeEffect)
   //在实例内保存了此次effect所涉及的对象属性的属性地图
@@ -99,12 +102,12 @@ export function track(target, key) {
 }
 
 // 用于判断是否可以tracking
-function isTracking() {
+export function isTracking() {
   // 当不存在activeEffect实例对象，也就是数据只reactive但没有effect时，返回，不去收集依赖
   // if (!activeEffect) return
   // 当使用stop的情况后，shouldTrack变为false，不去收集依赖
   // if(!shouldTrack) return
-  
+
   // *如下代码是对如上代码的合并
   return shouldTrack && activeEffect !== undefined
 }
@@ -118,6 +121,11 @@ function isTracking() {
 export function trigger(target, key) {
   const depsMap = targetMap.get(target)
   const dep = depsMap.get(key)
+
+  triggerEffect(dep)
+}
+
+export function triggerEffect(dep) {
   //执行fn
   for (const effect of dep) {
     //当发生更新时，如果存在 scheduler 则触发 scheduler
