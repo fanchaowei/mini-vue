@@ -1,12 +1,21 @@
+import { isObject, extend } from '../shared'
 import { track, trigger } from './effect'
-import { ReactiveFlags } from './reactive'
+import { reactive, ReactiveFlags, readonly } from './reactive'
 
 const get = createGetter()
 const set = createSetter()
 const readonlyGet = createGetter(true)
+const shallowReadonlyGet = createGetter(true, true)
 
-function createGetter(isReadonly = false) {
+function createGetter(isReadonly = false, isShallow = false) {
   return function get(target, key) {
+    //判断isReactive和isReadonly使用，当key为特定值时，返回响应布尔值
+    if(key === ReactiveFlags.IS_REACTIVE) {
+      return !isReadonly
+    } else if(key === ReactiveFlags.IS_READONLY) {
+      return isReadonly
+    }
+    
     /**
      * Reflect.get(target, key)
      * target: 对象
@@ -15,11 +24,13 @@ function createGetter(isReadonly = false) {
      */
     const res = Reflect.get(target, key)
 
-    //判断isReactive和isReadonly使用，当key为特定值时，返回响应布尔值
-    if(key === ReactiveFlags.IS_REACTIVE) {
-      return !isReadonly
-    } else if(key === ReactiveFlags.IS_READONLY) {
-      return isReadonly
+    //如何是shallow，就直接返回属性值。
+    if(isShallow) return res
+    
+    //进行多层判断
+    if(isObject(res)) {
+      //如果取的是响应式的属性值是对象的话，则再给这个对象加上响应式。
+      return isReadonly? readonly(res): reactive(res)
     }
 
     if (!isReadonly) {
@@ -58,3 +69,5 @@ export const readonlyHandlers = {
     return true
   },
 }
+
+export const shallowReadyonlyHandlers = extend({}, readonlyHandlers, { get: shallowReadonlyGet })

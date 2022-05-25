@@ -73,7 +73,7 @@ let targetMap = new Map()
  */
 export function track(target, key) {
 
-  if(!isTracking) return
+  if(!isTracking()) return
 
   //通过对象地图获取key地图
   let depsMap = targetMap.get(target)

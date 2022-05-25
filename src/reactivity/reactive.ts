@@ -1,5 +1,4 @@
-import { mutableHandlers, readonlyHandlers } from './baseHandlers'
-import { track, trigger } from './effect'
+import { mutableHandlers, readonlyHandlers, shallowReadyonlyHandlers } from './baseHandlers'
 
 //存储特定的参数
 export const enum ReactiveFlags {
@@ -23,12 +22,20 @@ export function readonly(raw) {
   return createReactiveObject(raw, readonlyHandlers)
 }
 
+export function shallowReadonly(raw) {
+  return createReactiveObject(raw, shallowReadyonlyHandlers)
+}
+
 export function isReactive(value) {
   return !!value[ReactiveFlags.IS_REACTIVE]
 }
 
 export function isReadonly(value) {
   return !!value[ReactiveFlags.IS_READONLY]
+}
+
+export function isProxy(value) {
+  return isReactive(value) || isReadonly(value)
 }
 
 //reactive和readonly的整合
