@@ -5,7 +5,7 @@ let activeEffect
 //判断是否需要进行依赖收集
 let shouldTrack = false
 
-class ReactiveEffect {
+export class ReactiveEffect {
   private _fn: any
   public scheduler: Function | undefined
   public deps = [] //此次effect所涉及的对象属性的属性地图
