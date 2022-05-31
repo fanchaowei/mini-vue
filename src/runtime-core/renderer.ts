@@ -1,4 +1,5 @@
 import { isObject } from "../shared"
+import { ShapeFlags } from "../shared/shapeFlags"
 import { createComponentInstance, setupComponent } from "./component"
 
 /**
@@ -13,9 +14,10 @@ export function render(vnode, container) {
 function patch(vnode, container) {
   //判断传入的是要生成 element 的对象还是，组件对象(包含render等)
   //要生成 element 的对象，type是要生成的虚拟节点的 html 标签类型，是字符串
-  if(typeof vnode.type === 'string') {
+  const { shapeFlags } = vnode
+  if(shapeFlags & ShapeFlags.ELEMENT) {
     processElement(vnode, container)
-  } else if(isObject(vnode.type)) {
+  } else if(shapeFlags & ShapeFlags.STATEFUL_COMPONENT) {
     processComponent(vnode, container)
   }
 }
@@ -59,11 +61,11 @@ function mountElement(vnode: any, container: any) {
   const el = (vnode.el = document.createElement(vnode.type))
 
   //vnode.children 包含该标签内的内容
-  const { children } = vnode
-  if(typeof children === 'string') {
+  const { shapeFlags, children } = vnode
+  if(shapeFlags & ShapeFlags.TEXT_CHILDREN) {
     //如果是字符串类型则直接传入
     el.textContent = children
-  } else if(Array.isArray(children)) {
+  } else if(shapeFlags & ShapeFlags.ARRATY_CHILDREN) {
     //如果是数组类型，说明内部还有子节点标签，递归去添加子节点标签
     mountChildren(vnode, el)
   }
@@ -72,7 +74,16 @@ function mountElement(vnode: any, container: any) {
   const { props } = vnode
   for(const key in props) {
     const val = props[key]
-    el.setAttribute(key, val)
+
+    //判断是否是特定的事件名称：on + Event(注意事件名首字母大写)
+    const isOn = (key) => /^on[A-Z]/.test(key)
+    if(isOn(key)) {
+      //获取事件名，并添加事件
+      const event = key.slice(2).toLowerCase()
+      el.addEventListener(event, val)
+    } else {
+      el.setAttribute(key, val)
+    }
   }
 
   container.append(el)

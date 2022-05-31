@@ -6,7 +6,12 @@ export const App = {
     window.self = this;
     return h(
       "div",
-      { id: "root" },
+      {
+        id: "root",
+        onClick: () => {
+          console.log("you click it.");
+        },
+      },
       // [
       //   h("div", { class: "red" }, "子节点1"),
       //   h("div", { class: "blue" }, "子节点2"),

@@ -1,3 +1,4 @@
+import { ShapeFlags } from "../shared/shapeFlags"
 
 /**
  * 创建虚拟节点
@@ -11,8 +12,21 @@ export function createVNode(type, props?, children?) {
     type,
     props,
     children,
-    el: null
+    el: null,
+    shapeFlags: getShapeFlags(type),  //类型信息字段
+  }
+
+  // 通过运算符的 | 的用法，进行赋值。这里赋值 children 的类型
+  if(typeof vnode.children === 'string') {
+    vnode.shapeFlags |= ShapeFlags.TEXT_CHILDREN
+  } else if(Array.isArray(vnode.children)) {
+    vnode.shapeFlags |= ShapeFlags.ARRATY_CHILDREN
   }
 
   return vnode
+}
+
+//先赋上值，这里返回的是当前虚拟节点的类型
+function getShapeFlags(type: any) {
+  return typeof type === 'string'? ShapeFlags.ELEMENT: ShapeFlags.STATEFUL_COMPONENT
 }
