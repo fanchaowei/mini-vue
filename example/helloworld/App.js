@@ -1,9 +1,8 @@
 import { h } from "../../lib/guide-mini-vue.esm.js";
+import { Foo } from "./Foo.js";
 
-window.self = null;
 export const App = {
   render() {
-    window.self = this;
     return h(
       "div",
       {
@@ -12,11 +11,11 @@ export const App = {
           console.log("you click it.");
         },
       },
-      // [
-      //   h("div", { class: "red" }, "子节点1"),
-      //   h("div", { class: "blue" }, "子节点2"),
-      // ]
-      "hi, " + this.msg
+      [
+        h("div", { class: "red" }, "子节点1"),
+        h("div", { class: "blue" }, "子节点2"),
+        h(Foo, { count: 1 }),
+      ]
     );
   },
 

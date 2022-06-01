@@ -1,3 +1,4 @@
+import { isObject } from '../shared'
 import { mutableHandlers, readonlyHandlers, shallowReadyonlyHandlers } from './baseHandlers'
 
 //存储特定的参数
@@ -40,5 +41,8 @@ export function isProxy(value) {
 
 //reactive和readonly的整合
 function createReactiveObject(target, baseHandlers) {
+  if(!isObject(target)) {
+    console.warn(`target ${target} 必须是一个对象`)
+  }
   return new Proxy(target, baseHandlers)
 }

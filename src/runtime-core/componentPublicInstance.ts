@@ -5,11 +5,15 @@ const publicPropertiesMap = {
 
 export const publicInstanceProxyHandlers = {
   get({ _: instance }, key) {
-    const { setupState } = instance
+    const { setupState, props } = instance
 
-    //如果 setup() 内存在该值，则返回
-    if(key in setupState) {
+    const hasOwn = (val, key) => Object.prototype.hasOwnProperty.call(val, key)
+    if(hasOwn(setupState,key)) {
+      //如果 setup() 内存在该值，则返回
       return setupState[key]
+    } else if(hasOwn(props,key)) {
+      //如果 props() 内存在该值，则返回
+      return props[key]
     }
 
     //是否传入的是特定的参数名，是的话返回对应的值

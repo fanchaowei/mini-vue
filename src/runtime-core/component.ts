@@ -1,3 +1,5 @@
+import { shallowReadonly } from "../reactivity/reactive"
+import { initProps } from "./componentProps"
 import { publicInstanceProxyHandlers } from "./componentPublicInstance"
 
 //组件对象实例
@@ -5,7 +7,8 @@ export function createComponentInstance(vnode) {
  const component = {
    vnode,
    type: vnode.type,
-   setupState: {}
+   setupState: {},
+   props: {}
  }
 
  return component
@@ -13,8 +16,9 @@ export function createComponentInstance(vnode) {
 
 export function setupComponent(instance) {
   //TODO
-  //initProps
   //initSlots
+
+  initProps(instance, instance.vnode.props)
 
   setupStatefulComponent(instance)
 }
@@ -31,11 +35,12 @@ export function setupStatefulComponent(instance) {
 
   if(setup) {
     /**
-     * setup()会返回 function 或者 object
+     * setup() 会返回 function 或者 object
      * 返回 function：是组件的 runner 函数
      * 返回 object：会把这个对象注入到当前组件的上下文中
+     * 在 setup() 函数内输入 props 作为参数，使 setup() 内能使用 props 传入的值
      */
-    const setupResult = setup()
+    const setupResult = setup(shallowReadonly(instance.props))
 
     //对返回值进行处理
     handleSetupResult(instance, setupResult)
