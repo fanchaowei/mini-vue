@@ -1,6 +1,8 @@
 import { shallowReadonly } from "../reactivity/reactive"
+import { emit } from "./componentEmit"
 import { initProps } from "./componentProps"
 import { publicInstanceProxyHandlers } from "./componentPublicInstance"
+import { initSlots } from "./componentSlots"
 
 //组件对象实例
 export function createComponentInstance(vnode) {
@@ -8,17 +10,25 @@ export function createComponentInstance(vnode) {
    vnode,
    type: vnode.type,
    setupState: {},
-   props: {}
+   props: {},
+   slots: {},
+   emit: () => {}
  }
+
+ /**
+  * 绑定 emit 函数
+  * bind() 函数第一位绑定 this ，第二位绑定第一个参数
+  * 这里固定第一个参数是组件虚拟节点，这样用户只需要输入 event 参数即可
+  */
+ component.emit = emit.bind(null, component)  as any
 
  return component
 }
 
 export function setupComponent(instance) {
-  //TODO
-  //initSlots
 
   initProps(instance, instance.vnode.props)
+  initSlots(instance, instance.vnode.children)
 
   setupStatefulComponent(instance)
 }
@@ -40,7 +50,9 @@ export function setupStatefulComponent(instance) {
      * 返回 object：会把这个对象注入到当前组件的上下文中
      * 在 setup() 函数内输入 props 作为参数，使 setup() 内能使用 props 传入的值
      */
-    const setupResult = setup(shallowReadonly(instance.props))
+    const setupResult = setup(shallowReadonly(instance.props), {
+      emit: instance.emit
+    })
 
     //对返回值进行处理
     handleSetupResult(instance, setupResult)

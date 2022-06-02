@@ -7,7 +7,8 @@ export const Foo = {
   },
   setup(props, { emit }) {
     const clickBtn = () => {
-      emit("add");
+      emit("add", 1, 2);
+      emit("add-foo");
     };
 
     return {
