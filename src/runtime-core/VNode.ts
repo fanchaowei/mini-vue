@@ -1,5 +1,10 @@
 import { ShapeFlags } from '../shared/shapeFlags'
 
+//创建插槽渲染 children 虚拟节点的唯一标识。
+export const Frangment = Symbol('Frangment')
+//创建插槽渲染只输入文字的唯一标识
+export const Text = Symbol('Text')
+
 /**
  * 创建虚拟节点
  * @param type 要生成节点的对象，内包含 render() 等
@@ -22,7 +27,7 @@ export function createVNode(type, props?, children?) {
   } else if (Array.isArray(vnode.children)) {
     vnode.shapeFlags |= ShapeFlags.ARRATY_CHILDREN
   }
-
+  //判断是否存在插槽，条件：是组件虚拟对象节点并且其 children 是一个对象类型
   if (vnode.shapeFlags & ShapeFlags.STATEFUL_COMPONENT) {
     if (typeof vnode.children === 'object') {
       vnode.shapeFlags |= ShapeFlags.SLOT_CHILDREN
@@ -37,4 +42,9 @@ function getShapeFlags(type: any) {
   return typeof type === 'string'
     ? ShapeFlags.ELEMENT
     : ShapeFlags.STATEFUL_COMPONENT
+}
+
+// 创建只输入文字的虚拟节点
+export function createTextVNode(text: string) {
+  return createVNode(Text, {}, text)
 }
