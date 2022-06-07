@@ -8,40 +8,40 @@ import { Frangment, Text } from './VNode'
  * @param container 容器
  */
 export function render(vnode, container) {
-  patch(vnode, container)
+  patch(vnode, container, null)
 }
 
-function patch(vnode, container) {
+function patch(vnode, container, parentComponent) {
   //判断传入的是要生成 element 的对象还是，组件对象(包含render等)
   //要生成 element 的对象，type是要生成的虚拟节点的 html 标签类型，是字符串
   const { type, shapeFlags } = vnode
   //判断类型是否是特定的参数类型，如果是则走特定的方法，否者走正常的组件或 element 判断。
   switch (type) {
     case Frangment:
-      processFrangment(vnode, container)
+      processFrangment(vnode, container, parentComponent)
       break
     case Text:
       processText(vnode, container)
       break
     default:
       if (shapeFlags & ShapeFlags.ELEMENT) {
-        processElement(vnode, container)
+        processElement(vnode, container, parentComponent)
       } else if (shapeFlags & ShapeFlags.STATEFUL_COMPONENT) {
-        processComponent(vnode, container)
+        processComponent(vnode, container, parentComponent)
       }
       break
   }
 }
 
 //处理组件
-function processComponent(vnode: any, container: any) {
-  mountComponent(vnode, container)
+function processComponent(vnode: any, container: any, parentComponent) {
+  mountComponent(vnode, container, parentComponent)
 }
 
 //挂载组件
-function mountComponent(initialVNode: any, container) {
+function mountComponent(initialVNode: any, container, parentComponent) {
   //创建组件对象实例，存储组件的一些必要的属性
-  const instance = createComponentInstance(initialVNode)
+  const instance = createComponentInstance(initialVNode, parentComponent)
 
   setupComponent(instance)
   setupRenderEffect(instance, initialVNode, container)
@@ -55,17 +55,17 @@ function setupRenderEffect(instance: any, initialVNode, container) {
   const { proxy } = instance
   const subTree = instance.render.call(proxy)
 
-  patch(subTree, container)
+  patch(subTree, container, instance)
 
   //将绑定在render()返回的根虚拟节点上的 element 绑定到组件虚拟节点上
   initialVNode.el = subTree.el
 }
 //处理 element
-function processElement(vnode: any, container: any) {
-  mountElement(vnode, container)
+function processElement(vnode: any, container: any, parentComponent) {
+  mountElement(vnode, container, parentComponent)
 }
 //挂载 element
-function mountElement(vnode: any, container: any) {
+function mountElement(vnode: any, container: any, parentComponent) {
   //此处的 vnode 是虚拟节点树的
   const el = (vnode.el = document.createElement(vnode.type))
 
@@ -76,7 +76,7 @@ function mountElement(vnode: any, container: any) {
     el.textContent = children
   } else if (shapeFlags & ShapeFlags.ARRATY_CHILDREN) {
     //如果是数组类型，说明内部还有子节点标签，递归去添加子节点标签
-    mountChildren(vnode, el)
+    mountChildren(vnode, el, parentComponent)
   }
 
   //vnode.props 包含 html 元素的 attribute、prop和事件等
@@ -99,16 +99,16 @@ function mountElement(vnode: any, container: any) {
 }
 
 //递归循环 children
-function mountChildren(vnode, container) {
+function mountChildren(vnode, container, parentComponent) {
   vnode.children.forEach((item) => {
-    patch(item, container)
+    patch(item, container, parentComponent)
   })
 }
 
 //只渲染 children 虚拟节点，插槽使用。需根据输入的特定参数。
-function processFrangment(vnode: any, container: any) {
+function processFrangment(vnode: any, container: any, parentComponent) {
   //调用循环 children 的函数
-  mountChildren(vnode, container)
+  mountChildren(vnode, container, parentComponent)
 }
 //当只有文字时，通过 dom 操作直接生成，并添加到容器内
 function processText(vnode: any, container: any) {

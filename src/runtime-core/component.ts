@@ -8,7 +8,7 @@ import { initSlots } from './componentSlots'
 let currentInstance = null
 
 //组件对象实例
-export function createComponentInstance(vnode) {
+export function createComponentInstance(vnode, parent) {
   const component = {
     vnode,
     type: vnode.type,
@@ -16,6 +16,8 @@ export function createComponentInstance(vnode) {
     props: {},
     slots: {},
     emit: () => {},
+    parent,
+    provides: parent ? parent.provides : {},
   }
 
   /**
