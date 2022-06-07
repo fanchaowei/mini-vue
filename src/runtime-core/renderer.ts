@@ -55,6 +55,7 @@ function setupRenderEffect(instance: any, initialVNode, container) {
   const { proxy } = instance
   const subTree = instance.render.call(proxy)
 
+  //第三个参数传入父组件的实例对象
   patch(subTree, container, instance)
 
   //将绑定在render()返回的根虚拟节点上的 element 绑定到组件虚拟节点上
