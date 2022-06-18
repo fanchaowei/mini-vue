@@ -1,6 +1,5 @@
-export { createApp } from './createApp'
 export { h } from './h'
-
+export { createRenderer } from './renderer'
 export { renderSlots } from './helpers/renderSlots'
 export { createTextVNode } from './VNode'
 export { getCurrentInstance } from './component'
