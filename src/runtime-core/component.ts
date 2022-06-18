@@ -1,3 +1,4 @@
+import { proxyRefs } from '../reactivity'
 import { shallowReadonly } from '../reactivity/reactive'
 import { emit } from './componentEmit'
 import { initProps } from './componentProps'
@@ -16,8 +17,10 @@ export function createComponentInstance(vnode, parent) {
     props: {},
     slots: {},
     emit: () => {},
-    parent,
+    parent, //父级的组件对象实例
     provides: parent ? parent.provides : {},
+    isMounted: false, // 是否是第一次调用(初始化)，false 为第一次调用。
+    subTree: {}, // 虚拟节点树
   }
 
   /**
@@ -75,9 +78,11 @@ export function setupStatefulComponent(instance) {
 function handleSetupResult(instance: any, setupResult: any) {
   //TODO function
 
-  //如果是对象，就把对象挂载到组件对象实例上
+  // 将 setup() 的返回值如果是对象，就把该对象挂载到组件对象实例上，这样 render() 中就可以调用到
   if (typeof setupResult === 'object') {
-    instance.setupState = setupResult
+    // 嵌套 proxyRefs 的原因：
+    // 如果 setup() 内的数据里有 ref 对象，通过 proxyRefs() 嵌套后不需要 .value 来取值。
+    instance.setupState = proxyRefs(setupResult)
   }
 
   finishComponentSetup(instance)

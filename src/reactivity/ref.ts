@@ -59,6 +59,7 @@ export function unRef(ref) {
   return isRef(ref) ? ref.value : ref
 }
 
+//当我们把ref对象在 template 内使用时，不需要再 .value ,proxyRef 就是做了这样的工作
 export function proxyRefs(objectWithRefs) {
   return new Proxy(objectWithRefs, {
     get(target, key) {
@@ -67,12 +68,12 @@ export function proxyRefs(objectWithRefs) {
 
     set(target, key, value) {
       //如果该属性值是ref对象并且set的值不是，则只替换掉 .value 的值
-      if(isRef(target[key]) && !isRef(value)){
-        return target[key].value = value
+      if (isRef(target[key]) && !isRef(value)) {
+        return (target[key].value = value)
       } else {
         // 其他情况一律直接替换
         return Reflect.set(target, key, value)
       }
-    }
+    },
   })
 }

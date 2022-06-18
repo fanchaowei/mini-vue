@@ -1,3 +1,4 @@
+import { effect } from '../reactivity/effect'
 import { ShapeFlags } from '../shared/shapeFlags'
 import { createComponentInstance, setupComponent } from './component'
 import { createAppApi } from './createApp'
@@ -22,34 +23,40 @@ export function createRenderer(options) {
    * @param container 容器
    */
   function render(vnode, container) {
-    patch(vnode, container, null)
+    patch(null, vnode, container, null)
   }
-
-  function patch(vnode, container, parentComponent) {
+  /**
+   *
+   * @param n1 旧的虚拟节点
+   * @param n2 现在的虚拟节点
+   * @param container
+   * @param parentComponent
+   */
+  function patch(n1, n2, container, parentComponent) {
     //判断传入的是要生成 element 的对象还是，组件对象(包含render等)
     //要生成 element 的对象，type是要生成的虚拟节点的 html 标签类型，是字符串
-    const { type, shapeFlags } = vnode
+    const { type, shapeFlags } = n2
     //判断类型是否是特定的参数类型，如果是则走特定的方法，否者走正常的组件或 element 判断。
     switch (type) {
       case Frangment:
-        processFrangment(vnode, container, parentComponent)
+        processFrangment(n1, n2, container, parentComponent)
         break
       case Text:
-        processText(vnode, container)
+        processText(n1, n2, container)
         break
       default:
         if (shapeFlags & ShapeFlags.ELEMENT) {
-          processElement(vnode, container, parentComponent)
+          processElement(n1, n2, container, parentComponent)
         } else if (shapeFlags & ShapeFlags.STATEFUL_COMPONENT) {
-          processComponent(vnode, container, parentComponent)
+          processComponent(n1, n2, container, parentComponent)
         }
         break
     }
   }
 
   //处理组件
-  function processComponent(vnode: any, container: any, parentComponent) {
-    mountComponent(vnode, container, parentComponent)
+  function processComponent(n1: any, n2: any, container: any, parentComponent) {
+    mountComponent(n2, container, parentComponent)
   }
 
   //挂载组件
@@ -63,21 +70,46 @@ export function createRenderer(options) {
 
   function setupRenderEffect(instance: any, initialVNode, container) {
     /**
-     * 开箱，获取到组件内部的虚拟节点树
-     * 此处通过 call() ，将 this 指向 instance.proxy ，目的是为了能通过 this 直接调用 setup() 返回的值
+     * 因为生成 element 对象并进行 DOM 渲染时，会调用到 instance.render。
+     * 而需要页面更新的页面内，render 内必然会使用到 setup 内定义的响应式的变量。
+     * 所以通过 effect 包裹，即可在响应式变量改变时，重新去触发生成 element 对象和操作 DOM ，实现页面的响应式更新。
      */
-    const { proxy } = instance
-    const subTree = instance.render.call(proxy)
+    effect(() => {
+      // 判断是否是初始化
+      if (!instance.isMounted) {
+        //初始化
+        /**
+         * 开箱，获取到组件内部的虚拟节点树
+         * 此处通过 call() ，将 this 指向 instance.proxy ，目的是为了能通过 this 直接调用 setup() 返回的值
+         */
+        const { proxy } = instance
+        const subTree = (instance.subTree = instance.render.call(proxy))
 
-    //第三个参数传入父组件的实例对象
-    patch(subTree, container, instance)
+        //第四个参数传入父组件的实例对象
+        patch(null, subTree, container, instance)
 
-    //将绑定在render()返回的根虚拟节点上的 element 绑定到组件虚拟节点上
-    initialVNode.el = subTree.el
+        //将虚拟节点树生成的 element 对象绑定到组件虚拟节点上
+        initialVNode.el = subTree.el
+        //初始化结束，isMounted 改为 true
+        instance.isMounted = true
+      } else {
+        //更新
+
+        const { proxy } = instance
+        // 生成本次的虚拟节点树
+        const subTree = instance.render.call(proxy)
+        // 获取前一次的虚拟节点树
+        const prevSubTree = instance.subTree
+        // 将本次生成的虚拟节点树替换
+        instance.subTree = subTree
+        //因为需要检测更新，对新旧虚拟节点树做对比，所以 patch 函数内将新旧虚拟节点树都传入
+        patch(prevSubTree, subTree, container, instance)
+      }
+    })
   }
   //处理 element
-  function processElement(vnode: any, container: any, parentComponent) {
-    mountElement(vnode, container, parentComponent)
+  function processElement(n1: any, n2: any, container: any, parentComponent) {
+    mountElement(n2, container, parentComponent)
   }
   //挂载 element
   function mountElement(vnode: any, container: any, parentComponent) {
@@ -108,19 +140,19 @@ export function createRenderer(options) {
   //递归循环 children
   function mountChildren(vnode, container, parentComponent) {
     vnode.children.forEach((item) => {
-      patch(item, container, parentComponent)
+      patch(null, item, container, parentComponent)
     })
   }
 
   //只渲染 children 虚拟节点，插槽使用。需根据输入的特定参数。
-  function processFrangment(vnode: any, container: any, parentComponent) {
+  function processFrangment(n1: any, n2: any, container: any, parentComponent) {
     //调用循环 children 的函数
-    mountChildren(vnode, container, parentComponent)
+    mountChildren(n2, container, parentComponent)
   }
   //当只有文字时，通过 dom 操作直接生成，并添加到容器内
-  function processText(vnode: any, container: any) {
-    const { children } = vnode
-    const textNode = (vnode.el = document.createTextNode(children))
+  function processText(n1: any, n2: any, container: any) {
+    const { children } = n2
+    const textNode = (n2.el = document.createTextNode(children))
     container.append(textNode)
   }
 
