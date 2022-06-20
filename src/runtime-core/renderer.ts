@@ -1,4 +1,5 @@
 import { effect } from '../reactivity/effect'
+import { EMPTY_OBJ } from '../shared'
 import { ShapeFlags } from '../shared/shapeFlags'
 import { createComponentInstance, setupComponent } from './component'
 import { createAppApi } from './createApp'
@@ -109,8 +110,57 @@ export function createRenderer(options) {
   }
   //处理 element
   function processElement(n1: any, n2: any, container: any, parentComponent) {
-    mountElement(n2, container, parentComponent)
+    if (!n1) {
+      //初始化
+      mountElement(n2, container, parentComponent)
+    } else {
+      //更新 element
+      patchElement(n1, n2, container)
+    }
   }
+  //处理更新
+  function patchElement(n1, n2, container) {
+    console.log('patchElement')
+    console.log('n1', n1)
+    console.log('n2', n2)
+
+    /**
+     * props 修改
+     */
+    // 获取新旧 props
+    const oldProps = n1.props || EMPTY_OBJ
+    const newProps = n2.props || EMPTY_OBJ
+    // 将 n1 的 el 挂载到新的 n2 上
+    const el = (n2.el = n1.el)
+
+    patchProps(el, oldProps, newProps)
+  }
+
+  //处理 props
+  function patchProps(el, oldProps, newProps) {
+    if (oldProps !== newProps) {
+      // 循环新的 props
+      for (const key in newProps) {
+        const prevProp = oldProps[key]
+        const nextProp = newProps[key]
+
+        // 如果新旧值不相等，则修改
+        if (prevProp !== nextProp) {
+          // 修改调用之前封装的设置 props 的方法。
+          hostPatchProp(el, key, prevProp, nextProp)
+        }
+      }
+    }
+    if (oldProps !== EMPTY_OBJ) {
+      // 循环旧的 props ，将新的 props 内没有的删除
+      for (const key in oldProps) {
+        if (!(key in newProps)) {
+          hostPatchProp(el, key, oldProps[key], null)
+        }
+      }
+    }
+  }
+
   //挂载 element
   function mountElement(vnode: any, container: any, parentComponent) {
     //此处的 vnode 是虚拟节点树的
@@ -131,7 +181,7 @@ export function createRenderer(options) {
     for (const key in props) {
       const val = props[key]
       //配置 attribute
-      hostPatchProp(el, key, val)
+      hostPatchProp(el, key, null, val)
     }
     //添加到主容器
     hostInsert(el, container)

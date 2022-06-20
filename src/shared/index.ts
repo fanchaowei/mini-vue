@@ -1,5 +1,7 @@
 export const extend = Object.assign
 
+export const EMPTY_OBJ = {}
+
 export const isObject = (val) => {
   return val !== null && typeof val === 'object'
 }
@@ -16,8 +18,8 @@ export const capitalize = (str: string) => {
 export const camelize = (str: string) => {
   // _ 代表的是 - 以及 - 后的第一位，即 -b
   // c 代表的是 - 后的第一位, 即 b
-  return str.replace(/-(\w)/g, (_, c:string) => {
-    return c? c.toUpperCase() : ''
+  return str.replace(/-(\w)/g, (_, c: string) => {
+    return c ? c.toUpperCase() : ''
   })
 }
 //是否存在，存在则添加上 on

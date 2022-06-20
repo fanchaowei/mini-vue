@@ -8,17 +8,22 @@ const createElement = (type) => {
  * 对 DOM 元素的 attribute、prop 和事件等进行配置
  * @param el 容器
  * @param key
- * @param val
+ * @param oldVal 旧的 val
+ * @param newVal 新的 val
  */
-const patchProp = (el, key, val) => {
+const patchProp = (el, key, oldVal, newVal) => {
   // 判断是否是特定的事件名称：on + Event(注意事件名首字母大写)
   const isOn = (key) => /^on[A-Z]/.test(key)
   if (isOn(key)) {
     //获取事件名，并添加事件
     const event = key.slice(2).toLowerCase()
-    el.addEventListener(event, val)
+    el.addEventListener(event, newVal)
   } else {
-    el.setAttribute(key, val)
+    if (newVal === undefined || newVal === null) {
+      el.removeAttribute(key)
+    } else {
+      el.setAttribute(key, newVal)
+    }
   }
 }
 // 添加到主容器
