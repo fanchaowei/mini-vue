@@ -16,6 +16,8 @@ export function createRenderer(options) {
     createElement: hostCreateELement,
     patchProp: hostPatchProp,
     insert: hostInsert,
+    remove: hostRemove,
+    setElementhost: hostSetElementText,
   } = options
 
   /**
@@ -115,11 +117,11 @@ export function createRenderer(options) {
       mountElement(n2, container, parentComponent)
     } else {
       //更新 element
-      patchElement(n1, n2, container)
+      patchElement(n1, n2, container, parentComponent)
     }
   }
   //处理更新
-  function patchElement(n1, n2, container) {
+  function patchElement(n1, n2, container, parentComponent) {
     console.log('patchElement')
     console.log('n1', n1)
     console.log('n2', n2)
@@ -134,6 +136,46 @@ export function createRenderer(options) {
     const el = (n2.el = n1.el)
 
     patchProps(el, oldProps, newProps)
+
+    /**
+     * children 修改
+     */
+    patchChildren(n1, n2, el, parentComponent)
+  }
+
+  // 更新虚拟 DOM ,处理 children
+  function patchChildren(n1: any, n2: any, container: any, parentComponent) {
+    const prevShapeFlags = n1.shapeFlags
+    const nextShapeFlages = n2.shapeFlags
+    const c1 = n1.children
+    const c2 = n2.children
+
+    // 判断新的虚拟节点的 children 是否为文本
+    if (nextShapeFlages & ShapeFlags.TEXT_CHILDREN) {
+      // 判断旧的虚拟节点的 children 是否为数组
+      if (prevShapeFlags & ShapeFlags.ARRATY_CHILDREN) {
+        // 卸载旧的
+        unmountedChildren(n1.children)
+      }
+      // 这里的判断主要是为了 text 与 text 的判断, 因为数组和 text 一定为 true。 所以重构写到了一起。
+      if (c1 !== c2) {
+        // 添加新的
+        hostSetElementText(container, n2.children)
+      }
+    } else {
+      if (prevShapeFlags & ShapeFlags.TEXT_CHILDREN) {
+        hostSetElementText(container, '')
+        mountChildren(n2.children, container, parentComponent)
+      }
+    }
+  }
+  // 卸载是数组的 children
+  function unmountedChildren(children: any) {
+    // 循环 children 数组,将一个个 children 的 element 对象传入 hostRemove 进行卸载
+    for (const key in children) {
+      const el = children[key].el
+      hostRemove(el)
+    }
   }
 
   //处理 props
@@ -173,7 +215,7 @@ export function createRenderer(options) {
       el.textContent = children
     } else if (shapeFlags & ShapeFlags.ARRATY_CHILDREN) {
       //如果是数组类型，说明内部还有子节点标签，递归去添加子节点标签
-      mountChildren(vnode, el, parentComponent)
+      mountChildren(vnode.children, el, parentComponent)
     }
 
     //vnode.props 包含 html 元素的 attribute、prop和事件等
@@ -188,8 +230,8 @@ export function createRenderer(options) {
   }
 
   //递归循环 children
-  function mountChildren(vnode, container, parentComponent) {
-    vnode.children.forEach((item) => {
+  function mountChildren(children, container, parentComponent) {
+    children.forEach((item) => {
       patch(null, item, container, parentComponent)
     })
   }
@@ -197,7 +239,7 @@ export function createRenderer(options) {
   //只渲染 children 虚拟节点，插槽使用。需根据输入的特定参数。
   function processFrangment(n1: any, n2: any, container: any, parentComponent) {
     //调用循环 children 的函数
-    mountChildren(n2, container, parentComponent)
+    mountChildren(n2.children, container, parentComponent)
   }
   //当只有文字时，通过 dom 操作直接生成，并添加到容器内
   function processText(n1: any, n2: any, container: any) {

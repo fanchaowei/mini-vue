@@ -30,11 +30,24 @@ const patchProp = (el, key, oldVal, newVal) => {
 const insert = (el, parent) => {
   parent.append(el)
 }
+//操作 DOM 删除对应的标签
+const remove = (children) => {
+  const parent = children.parentNode
+  if (parent) {
+    parent.removeChild(children)
+  }
+}
+//操作 DOM 为标签添加文本
+const setElementhost = (el, text) => {
+  el.textContent = text
+}
 
 const renderer: any = createRenderer({
   createElement,
   patchProp,
   insert,
+  remove,
+  setElementhost,
 })
 //因为将之前的 createApp 变成了闭包，故这边需要重新导出 createApp 函数。
 export function createApp(...args) {
