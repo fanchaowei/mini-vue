@@ -26,7 +26,7 @@ export function createRenderer(options) {
    * @param container 容器
    */
   function render(vnode, container) {
-    patch(null, vnode, container, null)
+    patch(null, vnode, container, null, null)
   }
   /**
    *
@@ -35,43 +35,54 @@ export function createRenderer(options) {
    * @param container
    * @param parentComponent
    */
-  function patch(n1, n2, container, parentComponent) {
+  function patch(n1, n2, container, parentComponent, anthor) {
     //判断传入的是要生成 element 的对象还是，组件对象(包含render等)
     //要生成 element 的对象，type是要生成的虚拟节点的 html 标签类型，是字符串
     const { type, shapeFlags } = n2
     //判断类型是否是特定的参数类型，如果是则走特定的方法，否者走正常的组件或 element 判断。
     switch (type) {
       case Frangment:
-        processFrangment(n1, n2, container, parentComponent)
+        processFrangment(n1, n2, container, parentComponent, anthor)
         break
       case Text:
         processText(n1, n2, container)
         break
       default:
         if (shapeFlags & ShapeFlags.ELEMENT) {
-          processElement(n1, n2, container, parentComponent)
+          processElement(n1, n2, container, parentComponent, anthor)
         } else if (shapeFlags & ShapeFlags.STATEFUL_COMPONENT) {
-          processComponent(n1, n2, container, parentComponent)
+          processComponent(n1, n2, container, parentComponent, anthor)
         }
         break
     }
   }
 
   //处理组件
-  function processComponent(n1: any, n2: any, container: any, parentComponent) {
-    mountComponent(n2, container, parentComponent)
+  function processComponent(
+    n1: any,
+    n2: any,
+    container: any,
+    parentComponent,
+    anthor
+  ) {
+    mountComponent(n2, container, parentComponent, anthor)
   }
 
   //挂载组件
-  function mountComponent(initialVNode: any, container, parentComponent) {
+  function mountComponent(
+    initialVNode: any,
+    container,
+    parentComponent,
+    anthor
+  ) {
     //创建组件对象实例，存储组件的一些必要的属性
     const instance = createComponentInstance(initialVNode, parentComponent)
 
     setupComponent(instance)
-    setupRenderEffect(instance, initialVNode, container)
+    setupRenderEffect(instance, initialVNode, container, anthor)
   }
 
-  function setupRenderEffect(instance: any, initialVNode, container) {
+  function setupRenderEffect(instance: any, initialVNode, container, anthor) {
     /**
      * 因为生成 element 对象并进行 DOM 渲染时，会调用到 instance.render。
      * 而需要页面更新的页面内，render 内必然会使用到 setup 内定义的响应式的变量。
@@ -89,7 +100,7 @@ export function createRenderer(options) {
         const subTree = (instance.subTree = instance.render.call(proxy))
 
         //第四个参数传入父组件的实例对象
-        patch(null, subTree, container, instance)
+        patch(null, subTree, container, instance, anthor)
 
         //将虚拟节点树生成的 element 对象绑定到组件虚拟节点上
         initialVNode.el = subTree.el
@@ -106,22 +117,28 @@ export function createRenderer(options) {
         // 将本次生成的虚拟节点树替换
         instance.subTree = subTree
         //因为需要检测更新，对新旧虚拟节点树做对比，所以 patch 函数内将新旧虚拟节点树都传入
-        patch(prevSubTree, subTree, container, instance)
+        patch(prevSubTree, subTree, container, instance, anthor)
       }
     })
   }
   //处理 element
-  function processElement(n1: any, n2: any, container: any, parentComponent) {
+  function processElement(
+    n1: any,
+    n2: any,
+    container: any,
+    parentComponent,
+    anthor
+  ) {
     if (!n1) {
       //初始化
-      mountElement(n2, container, parentComponent)
+      mountElement(n2, container, parentComponent, anthor)
     } else {
       //更新 element
-      patchElement(n1, n2, container, parentComponent)
+      patchElement(n1, n2, container, parentComponent, anthor)
     }
   }
   //处理更新
-  function patchElement(n1, n2, container, parentComponent) {
+  function patchElement(n1, n2, container, parentComponent, anthor) {
     console.log('patchElement')
     console.log('n1', n1)
     console.log('n2', n2)
@@ -140,11 +157,17 @@ export function createRenderer(options) {
     /**
      * children 修改
      */
-    patchChildren(n1, n2, el, parentComponent)
+    patchChildren(n1, n2, el, parentComponent, anthor)
   }
 
   // 更新虚拟 DOM ,处理 children
-  function patchChildren(n1: any, n2: any, container: any, parentComponent) {
+  function patchChildren(
+    n1: any,
+    n2: any,
+    container: any,
+    parentComponent,
+    anthor
+  ) {
     const prevShapeFlags = n1.shapeFlags
     const nextShapeFlages = n2.shapeFlags
     const c1 = n1.children
@@ -165,10 +188,66 @@ export function createRenderer(options) {
     } else {
       if (prevShapeFlags & ShapeFlags.TEXT_CHILDREN) {
         hostSetElementText(container, '')
-        mountChildren(n2.children, container, parentComponent)
+        mountChildren(n2.children, container, parentComponent, anthor)
+      } else {
+        patchKeyedChildren(c1, c2, container, parentComponent, anthor)
       }
     }
   }
+  // 处理新旧都是数组的情况，使用 diff 算法
+  function patchKeyedChildren(
+    c1: Array<any>,
+    c2: Array<any>,
+    container,
+    parentComponent,
+    parentAnthor
+  ) {
+    // 创建标记
+    // i 从新旧数组的第一位开始，向后移动。而 e1、e2 代表新旧数组的最后一位，操作时向前移动。
+    let i = 0
+    let e1 = c1.length - 1
+    let e2 = c2.length - 1
+
+    // 判断是否是相同的虚拟节点
+    function isSameVnodeType(n1, n2) {
+      return n1.type === n2.type && n1.key === n2.key
+    }
+
+    // 正向检索，通过 i++ 去找到新旧数组前面相同的位数
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[i]
+      const n2 = c2[i]
+      if (isSameVnodeType(n1, n2)) {
+        patch(n1, n2, container, parentComponent, parentAnthor)
+      } else {
+        break
+      }
+      i++
+    }
+
+    // 反向检索，通过 e1,e2 的值找到尾部相同的位数
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[e1]
+      const n2 = c2[e2]
+      if (isSameVnodeType(n1, n2)) {
+        patch(n1, n2, container, parentComponent, parentAnthor)
+      } else {
+        break
+      }
+      e1--
+      e2--
+    }
+
+    // 当进行完上面的循环，i 小于等于 e2，大于 e1 则新的数组比老的数组长
+    if (i <= e2) {
+      if (i > e1) {
+        const nextPos = i + 1
+        const anthor = nextPos > c2.length ? null : c2[i]
+        patch(null, c2[e2], container, parentComponent, anthor)
+      }
+    }
+  }
+
   // 卸载是数组的 children
   function unmountedChildren(children: any) {
     // 循环 children 数组,将一个个 children 的 element 对象传入 hostRemove 进行卸载
@@ -204,7 +283,7 @@ export function createRenderer(options) {
   }
 
   //挂载 element
-  function mountElement(vnode: any, container: any, parentComponent) {
+  function mountElement(vnode: any, container: any, parentComponent, anthor) {
     //此处的 vnode 是虚拟节点树的
     const el = (vnode.el = hostCreateELement(vnode.type))
 
@@ -215,7 +294,7 @@ export function createRenderer(options) {
       el.textContent = children
     } else if (shapeFlags & ShapeFlags.ARRATY_CHILDREN) {
       //如果是数组类型，说明内部还有子节点标签，递归去添加子节点标签
-      mountChildren(vnode.children, el, parentComponent)
+      mountChildren(vnode.children, el, parentComponent, anthor)
     }
 
     //vnode.props 包含 html 元素的 attribute、prop和事件等
@@ -226,20 +305,26 @@ export function createRenderer(options) {
       hostPatchProp(el, key, null, val)
     }
     //添加到主容器
-    hostInsert(el, container)
+    hostInsert(el, container, anthor)
   }
 
   //递归循环 children
-  function mountChildren(children, container, parentComponent) {
+  function mountChildren(children, container, parentComponent, anthor) {
     children.forEach((item) => {
-      patch(null, item, container, parentComponent)
+      patch(null, item, container, parentComponent, anthor)
     })
   }
 
   //只渲染 children 虚拟节点，插槽使用。需根据输入的特定参数。
-  function processFrangment(n1: any, n2: any, container: any, parentComponent) {
+  function processFrangment(
+    n1: any,
+    n2: any,
+    container: any,
+    parentComponent,
+    anthor
+  ) {
     //调用循环 children 的函数
-    mountChildren(n2.children, container, parentComponent)
+    mountChildren(n2.children, container, parentComponent, anthor)
   }
   //当只有文字时，通过 dom 操作直接生成，并添加到容器内
   function processText(n1: any, n2: any, container: any) {
