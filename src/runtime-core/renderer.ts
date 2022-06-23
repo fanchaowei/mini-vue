@@ -139,10 +139,6 @@ export function createRenderer(options) {
   }
   //处理更新
   function patchElement(n1, n2, container, parentComponent, anthor) {
-    console.log('patchElement')
-    console.log('n1', n1)
-    console.log('n2', n2)
-
     /**
      * props 修改
      */
@@ -205,8 +201,9 @@ export function createRenderer(options) {
     // 创建标记
     // i 从新旧数组的第一位开始，向后移动。而 e1、e2 代表新旧数组的最后一位，操作时向前移动。
     let i = 0
+    const l2 = c2.length
     let e1 = c1.length - 1
-    let e2 = c2.length - 1
+    let e2 = l2 - 1
 
     // 判断是否是相同的虚拟节点
     function isSameVnodeType(n1, n2) {
@@ -238,12 +235,77 @@ export function createRenderer(options) {
       e2--
     }
 
-    // 当进行完上面的循环，i 小于等于 e2，大于 e1 则新的数组比老的数组长
-    if (i <= e2) {
-      if (i > e1) {
-        const nextPos = i + 1
-        const anthor = nextPos > c2.length ? null : c2[i]
-        patch(null, c2[e2], container, parentComponent, anthor)
+    // 当进行完上面的循环，i 小于等于 e2，大于 e1 则新的数组比老的数组长，需要新增
+    if (i > e1) {
+      if (i <= e2) {
+        //找到锚点 anthor，要插入的数据就插入到该锚点之前，如果数据是向后添加的，则锚点为 null
+        const nextPos = e2 + 1
+        const anthor = nextPos < l2 ? c2[nextPos].el : null
+        //i 和 e2 差了几位，则就是新增了几个，所以循环遍历，知道 i 与 e2 相等
+        while (i <= e2) {
+          // 调用 patch ，最终会在 mountElement 函数的 hostInsert 中进行新增
+          patch(null, c2[i], container, parentComponent, anthor)
+          i++
+        }
+      }
+    }
+    // 同理，当 i 大于 e2，小于等于 e1 时，则老的数组比新的数组长，需要删除
+    else if (i > e2) {
+      while (i <= e1) {
+        // 删除操作
+        hostRemove(c1[i].el)
+        i++
+      }
+    }
+    // 处理两端相同中间不同的
+    else {
+      // 下方遍历使用的标记
+      const s1 = i
+      const s2 = i
+
+      // 计算出新的数组里有几个是不匹配的，需要更新
+      const toBePatched = e2 - s2 + 1
+      // 记录更新了多少个，每次在 patch 更新后都自增长，一旦它的值与 toBePatched 相等，则说明 dom 更新完毕。
+      let patched = 0
+
+      // 创建一张新数组的映射地图，映射地图包含的部分是新的与旧的不同的部分。
+      const keyToNewIndexMap = new Map()
+      for (i = s2; i <= e2; i++) {
+        // 将不同的部分存入
+        const nextChild = c2[i]
+        keyToNewIndexMap.set(nextChild.key, i)
+      }
+      // 循环旧数组，开始对数据进行处理
+      for (i = s1; i <= e1; i++) {
+        const prevChild = c1[i]
+
+        if (patched >= toBePatched) {
+          // 如果两值相等，说明新的数组包含的 DOM 数据更新已经完成，所以旧数组剩下的全都进行删除
+          hostRemove(prevChild.el)
+          continue
+        }
+
+        // 代表本次循环的单个虚拟节点如果存在在新的数组中，其位置标识是多少
+        let newIndex
+        if (!!prevChild.key) {
+          // 如果存在虚拟节点存在 key 则从映射地图中取值并赋值。
+          newIndex = keyToNewIndexMap.get(prevChild.key)
+        } else {
+          // 如果不存在 key 则去循环新的数组查找
+          for (let j = s2; j <= e2; j++) {
+            if (isSameVnodeType(prevChild, c2[j])) {
+              newIndex = j
+            }
+          }
+        }
+
+        if (!newIndex) {
+          // 倘若不存在 newIndex ，说明新数组中不存在该虚拟节点，将该虚拟节点对应的 element 标签对象删除
+          hostRemove(prevChild.el)
+        } else {
+          // 倘若存在则传入 patch，然后通过 patchElement 函数再去处理他们的 props 和 children
+          patch(prevChild, c2[newIndex], container, parentComponent, null)
+        }
       }
     }
   }

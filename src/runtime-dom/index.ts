@@ -27,8 +27,9 @@ const patchProp = (el, key, oldVal, newVal) => {
   }
 }
 // 添加到主容器
-const insert = (el, parent) => {
-  parent.append(el)
+const insert = (child, parent, anthor) => {
+  // 将 el 添加到 anthor 之前，倘若为 null ，则默认添加到最后，和 append() 一样。
+  parent.insertBefore(child, anthor || null)
 }
 //操作 DOM 删除对应的标签
 const remove = (children) => {
