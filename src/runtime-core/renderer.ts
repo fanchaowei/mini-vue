@@ -263,10 +263,20 @@ export function createRenderer(options) {
       const s1 = i
       const s2 = i
 
-      // 计算出新的数组里有几个是不匹配的，需要更新
+      // 新的数组中修改区域的长度
       const toBePatched = e2 - s2 + 1
       // 记录更新了多少个，每次在 patch 更新后都自增长，一旦它的值与 toBePatched 相等，则说明 dom 更新完毕。
       let patched = 0
+      /**
+       * 新老数组内虚拟节点的对应关系, 默认全为 0
+       * 只有新旧数组都有的虚拟节点才有值，倘若是新增的则 value 为 0
+       * key-value: 新数组需要修改的区域虚拟节点的顺序 - 当前新数组虚拟节点在老数组中的位置
+       */
+      const newIndexToOldIndexMap = new Array(toBePatched).fill(0)
+      // 是否需要进行虚拟节点移动, true 为需要
+      let moved = false
+      // 在循环时记录上一位虚拟节点的位置，用于确认是否将 moved 改为 true
+      let maxNewIndexSoFar = 0
 
       // 创建一张新数组的映射地图，映射地图包含的部分是新的与旧的不同的部分。
       const keyToNewIndexMap = new Map()
@@ -303,8 +313,53 @@ export function createRenderer(options) {
           // 倘若不存在 newIndex ，说明新数组中不存在该虚拟节点，将该虚拟节点对应的 element 标签对象删除
           hostRemove(prevChild.el)
         } else {
+          /**
+           * 判断现在的位置是否大于上一位。倘若无需移动，则现在的位置绝对大于上一位的位置。
+           */
+          if (newIndex > maxNewIndexSoFar) {
+            // 倘若是的则把现在的位置赋值给标记
+            maxNewIndexSoFar = newIndex
+          } else {
+            // 证明有移动
+            moved = true
+          }
+
+          /**
+           * 对新旧数组的对应关系赋值
+           * 为什么要 i + 1 ？因为可能出现赋值的 i 是 0 (第一位)的情况，这会与其他是 0 (新增的)搞混，所以都 +1
+           * 为什么 newIndex - s2 ? 因为 newIndex 内计算的位数还包含了新数组不变的 s2 长度，所以要减去那一部分的长度
+           */
+          newIndexToOldIndexMap[newIndex - s2] = i + 1
           // 倘若存在则传入 patch，然后通过 patchElement 函数再去处理他们的 props 和 children
           patch(prevChild, c2[newIndex], container, parentComponent, null)
+        }
+      }
+
+      // 获取无需移动的虚拟节点的位置, 让若 moved 为 false ，则给个空数组
+      const increasingNewIndexSequence = moved
+        ? getSequence(newIndexToOldIndexMap)
+        : []
+      // 长度计数，用于下面循环调用时，判断无需移动的虚拟节点是否全循环到了
+      let j = increasingNewIndexSequence.length - 1
+      // 循环新数组需要修改区域的长度的次数
+      for (let i = toBePatched - 1; i >= 0; i--) {
+        // 确认锚点,因为反向循环，所以我们从需要变动区域后面的第一位无需变动的虚拟节点开始，一位一位往前设置锚点。
+        const nextIndex = i + s2
+        const nextChild = c2[nextIndex]
+        const anthor = nextIndex + 1 < l2 ? c2[nextIndex + 1].el : null
+
+        // 倘若值为 0 说明是需要新增的新虚拟节点
+        if (newIndexToOldIndexMap[i] === 0) {
+          patch(null, nextChild, container, parentComponent, anthor)
+        } else if (moved) {
+          // 如果 j 小于 0 ，说明无需移动位置的全执行完了，后续的全都是需要移动位置的
+          // 如果 i 不与 increasingNewIndexSequence 数组中对应，说明是需要移动的
+          if (j < 0 || increasingNewIndexSequence[j] !== i) {
+            // 需要移动的虚拟节点进行添加
+            hostInsert(nextChild.el, container, anthor)
+          } else {
+            j--
+          }
         }
       }
     }
@@ -396,7 +451,54 @@ export function createRenderer(options) {
   }
 
   return {
-    //导出 createApp
+    // 导出 createApp
     createApp: createAppApi(render),
   }
+}
+/**
+ * 通过传入的数组，输出正向排布的不需要变动位置的数组
+ * 例如：[2, 3, 0, 5, 6, 9] -> [ 0, 1, 3, 4, 5 ]
+ * 上面例子代表：原数组的第 0, 1, 3, 4, 5 位是正向增长的，无需移动位置
+ * @param arr
+ * @returns
+ */
+function getSequence(arr) {
+  const p = arr.slice()
+  const result = [0]
+  let i, j, u, v, c
+  const len = arr.length
+  for (i = 0; i < len; i++) {
+    const arrI = arr[i]
+    if (arrI !== 0) {
+      j = result[result.length - 1]
+      if (arr[j] < arrI) {
+        p[i] = j
+        result.push(i)
+        continue
+      }
+      u = 0
+      v = result.length - 1
+      while (u < v) {
+        c = (u + v) >> 1
+        if (arr[result[c]] < arrI) {
+          u = c + 1
+        } else {
+          v = c
+        }
+      }
+      if (arrI < arr[result[u]]) {
+        if (u > 0) {
+          p[i] = result[u - 1]
+        }
+        result[u] = i
+      }
+    }
+  }
+  u = result.length
+  v = result[u - 1]
+  while (u-- > 0) {
+    result[u] = v
+    v = p[v]
+  }
+  return result
 }
