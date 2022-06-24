@@ -171,6 +171,7 @@ export function createRenderer(options) {
 
     // 判断新的虚拟节点的 children 是否为文本
     if (nextShapeFlages & ShapeFlags.TEXT_CHILDREN) {
+      // text to text 、text to array
       // 判断旧的虚拟节点的 children 是否为数组
       if (prevShapeFlags & ShapeFlags.ARRATY_CHILDREN) {
         // 卸载旧的
@@ -183,9 +184,11 @@ export function createRenderer(options) {
       }
     } else {
       if (prevShapeFlags & ShapeFlags.TEXT_CHILDREN) {
+        // array to text
         hostSetElementText(container, '')
         mountChildren(n2.children, container, parentComponent, anthor)
       } else {
+        // array to array
         patchKeyedChildren(c1, c2, container, parentComponent, anthor)
       }
     }
@@ -198,6 +201,8 @@ export function createRenderer(options) {
     parentComponent,
     parentAnthor
   ) {
+    //#region 锁定需要修改的位置区域
+
     // 创建标记
     // i 从新旧数组的第一位开始，向后移动。而 e1、e2 代表新旧数组的最后一位，操作时向前移动。
     let i = 0
@@ -235,6 +240,11 @@ export function createRenderer(options) {
       e2--
     }
 
+    //#endregion
+
+    // 下方的两端处理和中间处理是 if else 关系，是根据上面导出的 i e1 e2 之间的大小判断的。
+    //#region 处理数组两端和前者相比多出的或少了的 if
+
     // 当进行完上面的循环，i 小于等于 e2，大于 e1 则新的数组比老的数组长，需要新增
     if (i > e1) {
       if (i <= e2) {
@@ -257,6 +267,11 @@ export function createRenderer(options) {
         i++
       }
     }
+
+    //#endregion
+
+    //#region 处理其他复杂的情况，例：中间不同两端相同，多处变动等 else
+
     // 处理两端相同中间不同的
     else {
       // 下方遍历使用的标记
@@ -280,8 +295,8 @@ export function createRenderer(options) {
 
       // 创建一张新数组的映射地图，映射地图包含的部分是新的与旧的不同的部分。
       const keyToNewIndexMap = new Map()
+      // 将需要修改的区域的每个虚拟节点，用 key 与 位置 i 联系到一起，存入映射地图
       for (i = s2; i <= e2; i++) {
-        // 将不同的部分存入
         const nextChild = c2[i]
         keyToNewIndexMap.set(nextChild.key, i)
       }
@@ -330,8 +345,9 @@ export function createRenderer(options) {
            * 为什么 newIndex - s2 ? 因为 newIndex 内计算的位数还包含了新数组不变的 s2 长度，所以要减去那一部分的长度
            */
           newIndexToOldIndexMap[newIndex - s2] = i + 1
-          // 倘若存在则传入 patch，然后通过 patchElement 函数再去处理他们的 props 和 children
+          // 对已存在的进行替换，倘若存在则传入 patch，然后通过 patchElement 函数再去处理他们的 props 和 children
           patch(prevChild, c2[newIndex], container, parentComponent, null)
+          patched++
         }
       }
 
@@ -363,6 +379,8 @@ export function createRenderer(options) {
         }
       }
     }
+
+    //#endregion
   }
 
   // 卸载是数组的 children
@@ -456,6 +474,7 @@ export function createRenderer(options) {
   }
 }
 /**
+ * 最长递增子序列(不考察但是需要理解该算法在 diff 算法的作用)
  * 通过传入的数组，输出正向排布的不需要变动位置的数组
  * 例如：[2, 3, 0, 5, 6, 9] -> [ 0, 1, 3, 4, 5 ]
  * 上面例子代表：原数组的第 0, 1, 3, 4, 5 位是正向增长的，无需移动位置

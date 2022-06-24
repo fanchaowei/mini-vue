@@ -197,6 +197,7 @@ const nextChildren = [
   h('p', { key: 'E' }, 'E'),
   h('p', { key: 'F' }, 'F'),
   h('p', { key: 'G' }, 'G'),
+  h('p', { key: 'I' }, 'I'),
 ]
 
 export default {

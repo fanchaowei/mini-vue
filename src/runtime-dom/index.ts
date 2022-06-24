@@ -29,6 +29,7 @@ const patchProp = (el, key, oldVal, newVal) => {
 // 添加到主容器
 const insert = (child, parent, anthor) => {
   // 将 el 添加到 anthor 之前，倘若为 null ，则默认添加到最后，和 append() 一样。
+  // 倘若给定的子节点是当前已存在的节点，则会将这个节点移动到锚点之前
   parent.insertBefore(child, anthor || null)
 }
 //操作 DOM 删除对应的标签
