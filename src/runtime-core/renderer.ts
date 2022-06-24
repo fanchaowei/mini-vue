@@ -346,11 +346,15 @@ export function createRenderer(options) {
            */
           newIndexToOldIndexMap[newIndex - s2] = i + 1
           // 对已存在的进行替换，倘若存在则传入 patch，然后通过 patchElement 函数再去处理他们的 props 和 children
+          // 注意：此处并未操作移动，只是替换了标签内的 attribute
           patch(prevChild, c2[newIndex], container, parentComponent, null)
           patched++
         }
       }
 
+      /**
+       * 新增和移动 DOM 元素
+       */
       // 获取无需移动的虚拟节点的位置, 让若 moved 为 false ，则给个空数组
       const increasingNewIndexSequence = moved
         ? getSequence(newIndexToOldIndexMap)
