@@ -21,6 +21,7 @@ export function createComponentInstance(vnode, parent) {
     provides: parent ? parent.provides : {},
     isMounted: false, // 是否是第一次调用(初始化)，false 为第一次调用。
     subTree: {}, // 虚拟节点树
+    next: null, // 接下来要更新的虚拟节点
   }
 
   /**

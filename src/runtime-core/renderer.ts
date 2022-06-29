@@ -4,6 +4,7 @@ import { ShapeFlags } from '../shared/shapeFlags'
 import { createComponentInstance, setupComponent } from './component'
 import { createAppApi } from './createApp'
 import { Frangment, Text } from './VNode'
+import { shouldUpdateComponent } from './componentUpdateUtils'
 
 /**
  * 将 renderer 封装成一个闭包，方便扩展。
@@ -65,7 +66,26 @@ export function createRenderer(options) {
     parentComponent,
     anthor
   ) {
-    mountComponent(n2, container, parentComponent, anthor)
+    if (!n1) {
+      // 挂载组件
+      mountComponent(n2, container, parentComponent, anthor)
+    } else {
+      updateComponent(n1, n2)
+    }
+  }
+
+  function updateComponent(n1, n2) {
+    // 获取现在的组件对象实例, 并将它复制到 n2 中
+    const instance = (n2.component = n1.component)
+    // 判断是否需要进行更新，因为有时候父组件更新并未更新到该子组件
+    if (shouldUpdateComponent(n1, n2)) {
+      // 将接下来要更新的虚拟节点赋值到组件对象实例的 next 属性上
+      instance.next = n2
+      // effect 返回 render 函数，调用 render 函数实际就是跑一遍传入的回调函数，触发更新
+      instance.update()
+    } else {
+      n2.el = n1.el
+    }
   }
 
   //挂载组件
@@ -76,7 +96,10 @@ export function createRenderer(options) {
     anthor
   ) {
     //创建组件对象实例，存储组件的一些必要的属性
-    const instance = createComponentInstance(initialVNode, parentComponent)
+    const instance = (initialVNode.component = createComponentInstance(
+      initialVNode,
+      parentComponent
+    ))
 
     setupComponent(instance)
     setupRenderEffect(instance, initialVNode, container, anthor)
@@ -88,7 +111,7 @@ export function createRenderer(options) {
      * 而需要页面更新的页面内，render 内必然会使用到 setup 内定义的响应式的变量。
      * 所以通过 effect 包裹，即可在响应式变量改变时，重新去触发生成 element 对象和操作 DOM ，实现页面的响应式更新。
      */
-    effect(() => {
+    instance.update = effect(() => {
       // 判断是否是初始化
       if (!instance.isMounted) {
         //初始化
@@ -109,6 +132,15 @@ export function createRenderer(options) {
       } else {
         //更新
 
+        // 取出下次要更新的组件对象实例 next ，和现在的虚拟节点
+        const { next, vnode } = instance
+        // 如果下次要更新的组件对象实例存在，则进入更新
+        if (next) {
+          next.el = vnode.el
+          // 更新组件
+          updateComponentPreRender(instance, next)
+        }
+
         const { proxy } = instance
         // 生成本次的虚拟节点树
         const subTree = instance.render.call(proxy)
@@ -116,11 +148,22 @@ export function createRenderer(options) {
         const prevSubTree = instance.subTree
         // 将本次生成的虚拟节点树替换
         instance.subTree = subTree
-        //因为需要检测更新，对新旧虚拟节点树做对比，所以 patch 函数内将新旧虚拟节点树都传入
+        // 因为需要检测更新，对新旧虚拟节点树做对比，所以 patch 函数内将新旧虚拟节点树都传入
         patch(prevSubTree, subTree, container, instance, anthor)
       }
     })
   }
+
+  // 更新组件
+  function updateComponentPreRender(instance: any, nextVNode: any) {
+    // 替换组件对象实例上虚拟节点
+    instance.vnode = nextVNode
+    // 赋值完了，将 next 清空
+    instance.next = null
+    // 将 props 赋值过去
+    instance.props = nextVNode.props
+  }
+
   //处理 element
   function processElement(
     n1: any,

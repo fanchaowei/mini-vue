@@ -18,8 +18,9 @@ export function createVNode(type, props?, children?) {
     props,
     children,
     key: props && props.key,
-    el: null,
-    shapeFlags: getShapeFlags(type), //类型信息字段
+    el: null, // 当前虚拟节点的 element 对象
+    shapeFlags: getShapeFlags(type), // 类型信息字段
+    component: null, // 当前虚拟节点的组件实例对象
   }
 
   // 通过运算符的 | 的用法，进行赋值。这里赋值 children 的类型

@@ -2,6 +2,7 @@
 const publicPropertiesMap = {
   $el: (i) => i.vnode.el,
   $slots: (i) => i.slots,
+  $props: (i) => i.props,
 }
 
 //代理，为能通过 this 直接调用到 setup 和 props 的值或输入特定的参数返回对应的数据使用
