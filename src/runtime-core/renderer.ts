@@ -5,6 +5,7 @@ import { createComponentInstance, setupComponent } from './component'
 import { createAppApi } from './createApp'
 import { Frangment, Text } from './VNode'
 import { shouldUpdateComponent } from './componentUpdateUtils'
+import { queueJobs } from './scheduler'
 
 /**
  * 将 renderer 封装成一个闭包，方便扩展。
@@ -111,47 +112,54 @@ export function createRenderer(options) {
      * 而需要页面更新的页面内，render 内必然会使用到 setup 内定义的响应式的变量。
      * 所以通过 effect 包裹，即可在响应式变量改变时，重新去触发生成 element 对象和操作 DOM ，实现页面的响应式更新。
      */
-    instance.update = effect(() => {
-      // 判断是否是初始化
-      if (!instance.isMounted) {
-        //初始化
-        /**
-         * 开箱，获取到组件内部的虚拟节点树
-         * 此处通过 call() ，将 this 指向 instance.proxy ，目的是为了能通过 this 直接调用 setup() 返回的值
-         */
-        const { proxy } = instance
-        const subTree = (instance.subTree = instance.render.call(proxy))
+    instance.update = effect(
+      () => {
+        // 判断是否是初始化
+        if (!instance.isMounted) {
+          //初始化
+          /**
+           * 开箱，获取到组件内部的虚拟节点树
+           * 此处通过 call() ，将 this 指向 instance.proxy ，目的是为了能通过 this 直接调用 setup() 返回的值
+           */
+          const { proxy } = instance
+          const subTree = (instance.subTree = instance.render.call(proxy))
 
-        //第四个参数传入父组件的实例对象
-        patch(null, subTree, container, instance, anthor)
+          //第四个参数传入父组件的实例对象
+          patch(null, subTree, container, instance, anthor)
 
-        //将虚拟节点树生成的 element 对象绑定到组件虚拟节点上
-        initialVNode.el = subTree.el
-        //初始化结束，isMounted 改为 true
-        instance.isMounted = true
-      } else {
-        //更新
+          //将虚拟节点树生成的 element 对象绑定到组件虚拟节点上
+          initialVNode.el = subTree.el
+          //初始化结束，isMounted 改为 true
+          instance.isMounted = true
+        } else {
+          //更新
 
-        // 取出下次要更新的组件对象实例 next ，和现在的虚拟节点
-        const { next, vnode } = instance
-        // 如果下次要更新的组件对象实例存在，则进入更新
-        if (next) {
-          next.el = vnode.el
-          // 更新组件
-          updateComponentPreRender(instance, next)
+          // 取出下次要更新的组件对象实例 next ，和现在的虚拟节点
+          const { next, vnode } = instance
+          // 如果下次要更新的组件对象实例存在，则进入更新
+          if (next) {
+            next.el = vnode.el
+            // 更新组件
+            updateComponentPreRender(instance, next)
+          }
+
+          const { proxy } = instance
+          // 生成本次的虚拟节点树
+          const subTree = instance.render.call(proxy)
+          // 获取前一次的虚拟节点树
+          const prevSubTree = instance.subTree
+          // 将本次生成的虚拟节点树替换
+          instance.subTree = subTree
+          // 因为需要检测更新，对新旧虚拟节点树做对比，所以 patch 函数内将新旧虚拟节点树都传入
+          patch(prevSubTree, subTree, container, instance, anthor)
         }
-
-        const { proxy } = instance
-        // 生成本次的虚拟节点树
-        const subTree = instance.render.call(proxy)
-        // 获取前一次的虚拟节点树
-        const prevSubTree = instance.subTree
-        // 将本次生成的虚拟节点树替换
-        instance.subTree = subTree
-        // 因为需要检测更新，对新旧虚拟节点树做对比，所以 patch 函数内将新旧虚拟节点树都传入
-        patch(prevSubTree, subTree, container, instance, anthor)
+      },
+      {
+        scheduler() {
+          queueJobs(instance.update)
+        },
       }
-    })
+    )
   }
 
   // 更新组件
@@ -182,6 +190,7 @@ export function createRenderer(options) {
   }
   //处理更新
   function patchElement(n1, n2, container, parentComponent, anthor) {
+    console.log('#element update')
     /**
      * props 修改
      */
