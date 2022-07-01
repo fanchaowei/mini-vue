@@ -27,12 +27,37 @@ function parseChildren(context): any {
       // 处理 element
       node = parseElement(context)
     }
+  } else {
+    // 处理 text
+    node = parseText(context)
   }
 
   nodes.push(node)
 
   return nodes
 }
+
+function parseTextData(context, length) {
+  // 删除并推进
+  const content = context.source.slice(0, length)
+  adviceBy(context, length)
+
+  return content
+}
+
+//#region 处理 text
+
+function parseText(context: any) {
+  // text 就直接获取其本身就行
+  const content = parseTextData(context, context.source.length)
+
+  return {
+    type: NodeTypes.TEXT,
+    content,
+  }
+}
+
+//#endregion
 
 //#region 处理 element
 
@@ -87,11 +112,11 @@ function parseInterpolation(context) {
   const rawContentLength = closeIndex - openDelimiter.length
 
   // 获取 {{}} 内的字符串并移除空格
-  const rawContent = context.source.slice(0, rawContentLength)
+  const rawContent = parseTextData(context, rawContentLength)
   const content = rawContent.trim()
 
   // 在处理完上述之后，将这段 {{}} 字符串全部消除，因为还要处理后段字符串要处理。
-  adviceBy(context, closeIndex + closeDelimiter.length)
+  adviceBy(context, closeDelimiter.length)
 
   // 返回特定的格式
   return {

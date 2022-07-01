@@ -27,12 +27,12 @@ describe('Parse', () => {
     })
   })
 
-  // describe('text', () => {
-  //   const ast = baseParse('some text')
+  describe('text', () => {
+    const ast = baseParse('some text')
 
-  //   expect(ast.children[0]).toStrictEqual({
-  //     type: NodeTypes.TEXT,
-  //     tag: 'div',
-  //   })
-  // })
+    expect(ast.children[0]).toStrictEqual({
+      type: NodeTypes.TEXT,
+      content: 'some text',
+    })
+  })
 })
