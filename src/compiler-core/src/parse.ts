@@ -1,5 +1,10 @@
 import { NodeTypes } from './ast'
 
+const enum TagType {
+  START,
+  END,
+}
+
 // 处理 template
 export function baseParse(content: string) {
   // 将字符串嵌套在对象中
@@ -13,15 +18,58 @@ function parseChildren(context): any {
   const nodes: any = []
 
   let node
-  // 如果是 {{}} 则进入
-  if (context.source.startsWith('{{')) {
+  const s = context.source
+  if (s.startsWith('{{')) {
+    // 处理{{}}
     node = parseInterpolation(context)
+  } else if (s[0] === '<') {
+    if (/[a-z]/i.test(s)) {
+      // 处理 element
+      node = parseElement(context)
+    }
   }
 
   nodes.push(node)
 
   return nodes
 }
+
+//#region 处理 element
+
+function parseElement(context) {
+  // 处理并获取需要 return 的对象
+  const element = parseTag(context, TagType.START)
+
+  // 再次处理是为了消除 element 的后半部分，例：</div>
+  parseTag(context, TagType.END)
+
+  return element
+}
+
+function parseTag(context, type: TagType) {
+  /**
+   * exec 会返回一个数组
+   * 以 <div> 为例，数组第一个参数是：<div 。第二个参数是 div
+   */
+  const match: any = /^<\/?([a-z]*)/i.exec(context.source)
+
+  // 获取 tag
+  const tag = match[1]
+
+  // 将处理完的部分删除
+  adviceBy(context, match[0].length)
+  adviceBy(context, 1)
+
+  // 倘若传入的是 end ，说明只是为了消除后半部分，已经处理完了，无需 return
+  if (tag === TagType.END) return
+
+  return {
+    type: NodeTypes.ELEMENT,
+    tag: tag,
+  }
+}
+
+//#endregion
 
 //#region 处理 {{}}
 
