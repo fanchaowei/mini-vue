@@ -1,8 +1,15 @@
-export function transform(root, options) {
+export function transform(root, options = {}) {
   // 创建一个公用对象
   const context = createTranseformContext(root, options)
   // 处理对象
   traverseNode(root, context)
+
+  // 新增一个其本身的属性，便于后续操作。
+  createRootCodegen(root)
+}
+
+function createRootCodegen(root: any) {
+  root.codegenNode = root.children[0]
 }
 
 // 生成一个全局对象，供后续操作
