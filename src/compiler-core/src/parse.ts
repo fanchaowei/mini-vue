@@ -45,10 +45,6 @@ function parseChildren(context, ancestors): any {
 // 是否停止对字符串处理的循环
 function isEnd(context, ancestors) {
   const s = context.source
-  // 是否是 </***> 结尾
-  // if (ancestors && s.startsWith(`</${ancestors}>`)) {
-  //   return true
-  // }
 
   for (let i = ancestors.length - 1; i >= 0; i--) {
     // 循环存放 tag 的数组，当当前处理的字符串与数组内的 tag 存在匹配时，返回 true
@@ -71,6 +67,7 @@ function parseTextData(context, length) {
 }
 
 function startsWithEndTagOpen(source, tag) {
+  // 从2开始取是因为，判断的是尾部标签 </***>
   return source.slice(2, 2 + tag.length) === tag
 }
 
@@ -114,7 +111,7 @@ function parseElement(context, ancestors) {
   // 标签内部数据处理完成，删除该标签的判断用标识。
   ancestors.pop()
 
-  // 判断后半段是否和 tag 相同。如果是则是完整标签正常消除。如果不是说明标签存在确实，抛出异常。
+  // 判断后半段是否和 tag 相同。如果是则是完整标签正常消除。如果不是说明标签存在缺失，抛出异常。
   if (startsWithEndTagOpen(context.source, element.tag)) {
     // 再次处理是为了消除 element 的后半部分，例：</div>
     parseTag(context, TagType.END)
