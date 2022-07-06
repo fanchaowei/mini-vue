@@ -19,4 +19,14 @@ describe('codegen', () => {
      */
     expect(code).toMatchSnapshot()
   })
+
+  it('interpolation', () => {
+    const ast = baseParse('{{message}}')
+
+    transform(ast)
+
+    const { code } = generate(ast)
+
+    expect(code).toMatchSnapshot()
+  })
 })
