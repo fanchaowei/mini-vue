@@ -1,4 +1,5 @@
 import { NodeTypes } from './ast'
+import { TO_DISPLAY_STRING } from './runtimeHelpers'
 
 /**
  *
@@ -52,23 +53,24 @@ function traverseNode(node: any, context: any) {
   switch (node.type) {
     case NodeTypes.INTERPOLATION:
       // 是插值时，调用 helper 存入需要的字符串
-      context.helper('toDisplayString')
+      context.helper(TO_DISPLAY_STRING)
+      break
+    case NodeTypes.ROOT:
+    case NodeTypes.ELEMENT:
+      // 只有类型为 root 和 element 才有 children
+      // 如果该对象存在 children 则递归执行。
+      traverseChildren(node, context)
       break
 
     default:
       break
   }
-
-  // 如果该对象存在 children 则递归执行。
-  traverseChildren(node, context)
 }
 
 function traverseChildren(node, context) {
   const children = node.children
-  if (children) {
-    for (let i = 0; i < children.length; i++) {
-      const node = children[i]
-      traverseNode(node, context)
-    }
+  for (let i = 0; i < children.length; i++) {
+    const node = children[i]
+    traverseNode(node, context)
   }
 }

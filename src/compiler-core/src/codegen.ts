@@ -1,4 +1,5 @@
 import { NodeTypes } from './ast'
+import { helperMapName, TO_DISPLAY_STRING } from './runtimeHelpers'
 
 export function generate(ast) {
   const context = createCodegenContext()
@@ -31,7 +32,7 @@ function genFunctionPreamble(ast: any, context) {
 
   const VueBinging = 'Vue'
   const helpers = ast.helpers
-  const aliasHeplers = (s) => `${s}: _${s}`
+  const aliasHeplers = (s) => `${helperMapName[s]}: _${helperMapName[s]}`
   // 当 helpers 大于0时，才说明存在需要导入的值。
   if (helpers.length > 0) {
     push(`const { ${helpers.map(aliasHeplers).join(',')} } = ${VueBinging}`)
@@ -66,6 +67,9 @@ function createCodegenContext() {
     push: (source) => {
       context.code += source
     },
+    helper: (key) => {
+      return `_${helperMapName[key]}`
+    },
   }
   return context
 }
@@ -76,13 +80,13 @@ function genText(node, context) {
 }
 
 function genInterpolation(node: any, context: any) {
-  const { push } = context
-  push(`_toDisplayString(`)
+  const { push, helper } = context
+  push(`${helper(TO_DISPLAY_STRING)}(`)
   // 如果是插值类型，插值类型的值其实在 content 内，类型为 SIMPLE_EXPRESSION 。所以重新将 content 送入进行处理导出
   genNode(node.content, context)
   push(`)`)
 }
 function genExpression(node: any, context: any) {
   const { push } = context
-  push(`_ctx.${node.content}`)
+  push(`${node.content}`)
 }
