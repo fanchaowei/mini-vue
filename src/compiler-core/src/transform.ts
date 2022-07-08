@@ -20,7 +20,12 @@ export function transform(root, options = {}) {
 }
 
 function createRootCodegen(root: any) {
-  root.codegenNode = root.children[0]
+  const child = root.children[0]
+  if (root.type === NodeTypes.ELEMENT) {
+    root.codegenNode = child.codegenNode
+  } else {
+    root.codegenNode = root.children[0]
+  }
 }
 // 生成一个全局对象，供后续操作
 function createTranseformContext(root: any, options: any) {
@@ -46,7 +51,7 @@ function traverseNode(node: any, context: any) {
   // 循环调用并执行该处理函数
   for (let i = 0; i < nodeTransforms.length; i++) {
     const transform = nodeTransforms[i]
-    transform(node)
+    transform(node, context)
   }
 
   // 根据当前处理的对象的类型，进行不同的处理

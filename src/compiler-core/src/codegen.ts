@@ -1,11 +1,14 @@
+import { isString } from '../../shared'
 import { NodeTypes } from './ast'
-import { helperMapName, TO_DISPLAY_STRING } from './runtimeHelpers'
+import {
+  CREATE_ELEMENT_BLOCK,
+  helperMapName,
+  TO_DISPLAY_STRING,
+} from './runtimeHelpers'
 
 export function generate(ast) {
   const context = createCodegenContext()
   const { push } = context
-
-  console.log('@@@', ast)
 
   // 拼接的数据整理
   const functionName = 'render'
@@ -41,8 +44,13 @@ function genFunctionPreamble(ast: any, context) {
   push('return ')
 }
 
-// 获取 ast 中要输出的 content
+/**
+ * 获取 ast 中要输出的 content
+ * @param node codegenNode
+ * @param context
+ */
 function genNode(node: any, context) {
+  // 不同的类型做不同的处理
   switch (node.type) {
     case NodeTypes.TEXT:
       // 处理 text
@@ -54,6 +62,12 @@ function genNode(node: any, context) {
       break
     case NodeTypes.SIMPLE_EXPRESSION:
       genExpression(node, context)
+      break
+    case NodeTypes.ELEMENT:
+      genElement(node, context)
+      break
+    case NodeTypes.COMPOUND_EXPRESSION:
+      genCompoundExpression(node, context)
       break
     default:
       break
@@ -89,4 +103,27 @@ function genInterpolation(node: any, context: any) {
 function genExpression(node: any, context: any) {
   const { push } = context
   push(`${node.content}`)
+}
+
+// element 类型的输出
+function genElement(node: any, context: any) {
+  const { push, helper } = context
+  const { tag, children } = node
+  push(`${helper(CREATE_ELEMENT_BLOCK)}("${tag}", null, `)
+  genNode(children, context)
+  push(`)`)
+}
+// 处理复合类型
+function genCompoundExpression(node: any, context: any) {
+  const { push } = context
+
+  const children = node.children
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]
+    if (isString(child)) {
+      push(child)
+    } else {
+      genNode(child, context)
+    }
+  }
 }
