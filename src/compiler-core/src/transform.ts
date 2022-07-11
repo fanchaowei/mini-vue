@@ -19,9 +19,11 @@ export function transform(root, options = {}) {
   root.helpers = [...context.helpers.keys()]
 }
 
+// codegenNode 赋值
 function createRootCodegen(root: any) {
   const child = root.children[0]
-  if (root.type === NodeTypes.ELEMENT) {
+  // 如果是 element 类型，则将处理的 codegenNode 赋值
+  if (child.type === NodeTypes.ELEMENT) {
     root.codegenNode = child.codegenNode
   } else {
     root.codegenNode = root.children[0]
@@ -46,12 +48,19 @@ function createTranseformContext(root: any, options: any) {
  * @param context 全局对象
  */
 function traverseNode(node: any, context: any) {
-  // 获取传入的处理函数
+  // 获取传入的插件函数
   const nodeTransforms = context.nodeTransforms
-  // 循环调用并执行该处理函数
+  /**
+   * 保存执行的插件函数
+   * 为了能让插件函数正序执行一遍再倒序执行一遍，如：123 -> 321(数字分别代表一个函数)
+   */
+  const exitFns: any = []
+  // 循环调用并执行这些插件函数
   for (let i = 0; i < nodeTransforms.length; i++) {
     const transform = nodeTransforms[i]
-    transform(node, context)
+    const onExit = transform(node, context)
+    // 如果 onExit 存在，说明是需要倒序输出的插件函数，存入存储数组。
+    if (onExit) exitFns.push(onExit)
   }
 
   // 根据当前处理的对象的类型，进行不同的处理
@@ -69,6 +78,12 @@ function traverseNode(node: any, context: any) {
 
     default:
       break
+  }
+
+  let i = exitFns.length
+  while (i--) {
+    // 循环存储插件的数组，依次倒序执行函数
+    exitFns[i]()
   }
 }
 

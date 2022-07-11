@@ -6,3 +6,13 @@ export const enum NodeTypes {
   ROOT,
   COMPOUND_EXPRESSION, // 混合类型
 }
+
+//transformElement 中 element 类型最后的输出对象
+export function createVNodeCall(tag, props, children) {
+  return {
+    type: NodeTypes.ELEMENT,
+    tag,
+    props,
+    children,
+  }
+}

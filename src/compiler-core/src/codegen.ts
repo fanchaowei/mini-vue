@@ -61,12 +61,14 @@ function genNode(node: any, context) {
       genInterpolation(node, context)
       break
     case NodeTypes.SIMPLE_EXPRESSION:
+      // 处理插值内的内容
       genExpression(node, context)
       break
     case NodeTypes.ELEMENT:
       genElement(node, context)
       break
     case NodeTypes.COMPOUND_EXPRESSION:
+      // 处理联合类型
       genCompoundExpression(node, context)
       break
     default:
@@ -108,11 +110,39 @@ function genExpression(node: any, context: any) {
 // element 类型的输出
 function genElement(node: any, context: any) {
   const { push, helper } = context
-  const { tag, children } = node
-  push(`${helper(CREATE_ELEMENT_BLOCK)}("${tag}", null, `)
-  genNode(children, context)
+  const { tag, children, props } = node
+  push(`${helper(CREATE_ELEMENT_BLOCK)}(`)
+  genNodeList(genNullable([tag, props, children]), context)
   push(`)`)
 }
+
+// 将需要输出的数据转化为字符串
+function genNodeList(nodes: any, context: any) {
+  const { push } = context
+
+  // 循环
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i]
+    if (isString(node)) {
+      // 如果是字符串则直接输出
+      push(node)
+    } else {
+      // 不是字符串则进入 genNode 继续处理
+      genNode(node, context)
+    }
+
+    // 加上逗号
+    if (i < nodes.length) {
+      push(', ')
+    }
+  }
+}
+
+// 对 tag, props, children 进行处理，如果为 undefiend 或空，则统一返回 null
+function genNullable(args: any) {
+  return args.map((arg) => arg || 'null')
+}
+
 // 处理复合类型
 function genCompoundExpression(node: any, context: any) {
   const { push } = context
@@ -121,8 +151,10 @@ function genCompoundExpression(node: any, context: any) {
   for (let i = 0; i < children.length; i++) {
     const child = children[i]
     if (isString(child)) {
+      // 如果是 string 类型则直接添加
       push(child)
     } else {
+      // 否则传入 genNode 继续处理
       genNode(child, context)
     }
   }
