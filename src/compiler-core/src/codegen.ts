@@ -132,7 +132,7 @@ function genNodeList(nodes: any, context: any) {
     }
 
     // 加上逗号
-    if (i < nodes.length) {
+    if (i < nodes.length - 1) {
       push(', ')
     }
   }

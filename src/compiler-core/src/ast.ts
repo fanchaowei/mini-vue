@@ -9,7 +9,7 @@ export const enum NodeTypes {
   COMPOUND_EXPRESSION, // 混合类型
 }
 
-//transformElement 中 element 类型最后的输出对象
+// transformElement 中 element 类型最后的输出对象
 export function createVNodeCall(context, tag, props, children) {
   context.helper(CREATE_ELEMENT_BLOCK)
   return {

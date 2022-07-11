@@ -1,12 +1,8 @@
 import { NodeTypes } from '../ast'
+import { isText } from '../utils'
 
 export function transformText(node) {
   const { children } = node
-
-  function isText(node) {
-    // 判断是否符合复合类型
-    return node.type === NodeTypes.TEXT || node.type === NodeTypes.INTERPOLATION
-  }
 
   // 只有本身是 element 才执行
   if (node.type === NodeTypes.ELEMENT) {
