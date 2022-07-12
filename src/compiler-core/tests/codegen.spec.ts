@@ -35,19 +35,19 @@ describe('codegen', () => {
     expect(code).toMatchSnapshot()
   })
 
-  it('element', () => {
-    const ast = baseParse('<div></div>')
+  // it('element', () => {
+  //   const ast = baseParse('<div></div>')
 
-    transform(ast, {
-      nodeTransforms: [transformElement],
-    })
+  //   transform(ast, {
+  //     nodeTransforms: [transformElement],
+  //   })
 
-    const { code } = generate(ast)
+  //   const { code } = generate(ast)
 
-    expect(code).toMatchSnapshot()
-  })
+  //   expect(code).toMatchSnapshot()
+  // })
 
-  it.only('three type', () => {
+  it('three type', () => {
     const ast = baseParse('<div>hi, {{message}}</div>')
 
     transform(ast, {

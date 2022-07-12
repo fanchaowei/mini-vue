@@ -122,7 +122,10 @@ export function createRenderer(options) {
            * 此处通过 call() ，将 this 指向 instance.proxy ，目的是为了能通过 this 直接调用 setup() 返回的值
            */
           const { proxy } = instance
-          const subTree = (instance.subTree = instance.render.call(proxy))
+          const subTree = (instance.subTree = instance.render.call(
+            proxy,
+            proxy
+          ))
 
           //第四个参数传入父组件的实例对象
           patch(null, subTree, container, instance, anthor)
@@ -145,7 +148,7 @@ export function createRenderer(options) {
 
           const { proxy } = instance
           // 生成本次的虚拟节点树
-          const subTree = instance.render.call(proxy)
+          const subTree = instance.render.call(proxy, proxy)
           // 获取前一次的虚拟节点树
           const prevSubTree = instance.subTree
           // 将本次生成的虚拟节点树替换

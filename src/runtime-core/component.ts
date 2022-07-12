@@ -90,12 +90,19 @@ function handleSetupResult(instance: any, setupResult: any) {
 }
 
 function finishComponentSetup(instance: any) {
-  //拿到createApp(App)传入的App参数
+  // 拿到createApp(App)传入的App参数
   const Component = instance.type
-  //将参数内需要生成的虚拟节点的函数挂载到组件对象实例上
-  if (Component.render) {
-    instance.render = Component.render
+  // 将参数内需要生成的虚拟节点的函数挂载到组件对象实例上
+  // 走 template 转 render 函数需要 compiler 存在以及 Component.render 不存在。
+  // 因为如果 Component.render 存在，则优先级是最高的。就直接赋值 Component.render 了
+  if (compiler && !Component.render) {
+    // 存在 Component.template 才能进行转换
+    if (Component.template) {
+      Component.render = compiler(Component.template)
+    }
   }
+
+  instance.render = Component.render
 }
 
 //输出内部组件实例，也是官方接口
@@ -105,4 +112,10 @@ export function getCurrentInstance() {
 //对全局内部组件实例进行赋值
 function setCurrentInstance(instance) {
   currentInstance = instance
+}
+
+let compiler
+// 获得 template 转 render 的函数
+export function registerRuntimeCompiler(_compiler) {
+  compiler = _compiler
 }
