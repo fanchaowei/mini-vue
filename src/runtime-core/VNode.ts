@@ -5,7 +5,7 @@ export const Frangment = Symbol('Frangment')
 //创建插槽渲染只输入文字的唯一标识
 export const Text = Symbol('Text')
 
-export { createVNode as createElementVnode }
+export { createVNode as createElementBlock }
 
 /**
  * 创建虚拟节点
